@@ -39,6 +39,8 @@ export const useMPAStore = defineStore('mpa', () => {
   const pendingMpaData = ref<MpaRecord | null>(null);
   const loading = ref(false);
   const loadingPending = ref(false);
+  // Filters applied on the MPA list, persisted across navigation
+  const listFilters = ref<Record<string, unknown> | null>(null);
 
   async function loadMpa(id: string) {
     loading.value = true;
@@ -52,10 +54,10 @@ export const useMPAStore = defineStore('mpa', () => {
     }
   }
 
-  async function loadPendingMPAs() {
+  async function loadPendingMPAs(params?: any) {
     loadingPending.value = true;
     try {
-      const response = await fetchPendingMPAs();
+      const response = await fetchPendingMPAs(params);
 
       // The response structure is: { data: { success: true, count: number, data: [...] } }
       // So response.data = { success, count, data }
@@ -150,6 +152,7 @@ export const useMPAStore = defineStore('mpa', () => {
     pendingMpaData,
     loading,
     loadingPending,
+    listFilters,
     loadMpa,
     loadPendingMPA: loadPendingMpa,
     loadPendingMPAs,

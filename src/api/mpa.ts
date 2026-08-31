@@ -38,9 +38,10 @@ export const uploadShapefile = (file: File, formData: Record<string, any>) => {
 
 /**
  * Fetch pending MPAs from upload queue (admin only)
+ * @param params - Query parameters (q for search, filter for filters)
  * @returns Promise with pending MPAs list
  */
-export const fetchPendingMPAs = () => api.get('/upload/queue');
+export const fetchPendingMPAs = (params?: any) => api.get('/upload/queue', { params });
 
 /**
  * Fetch a single pending MPA by staging_id (admin only)
@@ -68,8 +69,9 @@ export const rejectPendingMPA = (stagingId: string | number, reason: string) =>
 /**
  * Fetch MPAs uploaded by the current user
  * Returns both staging (pending) and approved MPAs
+ * @param params - Query parameters (q for search, filter for filters)
  * @returns Promise with {success, staging, approved}
  */
-export const fetchMyMPAs = () => api.get('/upload/my-mpas');
+export const fetchMyMPAs = (params?: any) => api.get('/upload/my-mpas', { params });
 
 export const fetchOrdinances = (mpaId: string | number) => api.get(`/ordinance/${mpaId}`);
