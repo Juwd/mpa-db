@@ -13,7 +13,7 @@
     <PinDrawer />
     <MpaDrawer />
 
-    <FilterModal v-if="filterModalOpen" @close="filterModalOpen = false" @apply="updateWmsLayer" />
+    <FilterModal v-if="filterModalOpen" :initial-filters="filters" @close="filterModalOpen = false" @apply="onFilterApply" />
 
     <Loading v-if="loading" />
   </div>
@@ -61,6 +61,25 @@ const detailedDataLoaded = ref(false);
 
 const drawerStore = useDrawerStore();
 const filterModalOpen = ref(false);
+
+type FilterState = {
+  mpa: boolean;
+  nipas: string;
+  ecosystem: string;
+  mpaMinYear: number | null;
+  mpaMaxYear: number | null;
+};
+
+const defaultFilters = (): FilterState => ({
+  mpa: true,
+  nipas: '',
+  ecosystem: 'All',
+  mpaMinYear: null,
+  mpaMaxYear: null
+});
+
+const filters = ref<FilterState>(defaultFilters());
+let detailedData: any[] = [];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PUBLIC_LEAFLET_API = (import.meta.env.PUBLIC_LEAFLET_API || import.meta.env.VITE_LEAFLET_API) as string | undefined;
@@ -255,6 +274,49 @@ function handleSingleFeature(feature: any) {
   drawerStore.openMpa(feature.properties || feature);
 }
 
+function onFilterApply(response: FilterState) {
+  filters.value = { ...response };
+  updateWmsLayer(response);
+  renderDetailedMarkers();
+}
+
+function matchesPointFilter(pt: any, f: FilterState): boolean {
+  if (!f.mpa) return false;
+
+  if (f.nipas !== '' && f.nipas !== null && f.nipas !== undefined) {
+    const want = f.nipas === '1' || (f.nipas as unknown as number) === 1 ? 1 : 0;
+    const ptVal = Number(pt.is_nipas);
+    if (Number.isNaN(ptVal) || (want === 1 ? ptVal !== 1 : ptVal === 1)) return false;
+  }
+
+  const year = pt.year_established != null ? Number(pt.year_established) : null;
+  if (f.mpaMinYear !== null && f.mpaMinYear !== undefined && !Number.isNaN(f.mpaMinYear as number)) {
+    if (year === null || Number.isNaN(year) || year < (f.mpaMinYear as number)) return false;
+  }
+  if (f.mpaMaxYear !== null && f.mpaMaxYear !== undefined && !Number.isNaN(f.mpaMaxYear as number)) {
+    if (year === null || Number.isNaN(year) || year > (f.mpaMaxYear as number)) return false;
+  }
+  return true;
+}
+
+function renderDetailedMarkers() {
+  if (!detailedDataLayer || detailedData.length === 0) return;
+  detailedDataLayer.clearLayers();
+  const f = filters.value;
+  detailedData.forEach((pt: any) => {
+    if (!pt.latitude || !pt.longitude) return;
+    if (!matchesPointFilter(pt, f)) return;
+    const marker = L.circleMarker(
+      [parseFloat(pt.latitude), parseFloat(pt.longitude)],
+      { radius: 5, fillColor: '#FF0000', color: '#000' }
+    );
+    marker.bindTooltip(pt.complete_name || 'MPA');
+    marker.bindPopup(`<strong>${pt.complete_name || 'MPA'}</strong>`);
+    marker.on('click', () => callDrawerMap(pt));
+    marker.addTo(detailedDataLayer);
+  });
+}
+
 async function updateWmsLayer(response: any) {
   // Build CQL filter from filter form response
   const cqlFilters: string[] = [];
@@ -282,22 +344,14 @@ async function updateWmsLayer(response: any) {
   const cqlFilter = cqlFilters.length > 0 ? cqlFilters.join(' AND ') : null;
   currentCqlFilter = cqlFilter;
 
-  const wmsLayerVisible = map && wmsLayer ? map.hasLayer(wmsLayer) : false;
-
-  if (map && wmsLayer) {
-    map.removeLayer(wmsLayer);
-  }
-
-  wmsLayer = L.tileLayer.wms(`${PUBLIC_GEOSERVER_URL || ''}/mpad_Geoserver/wms`, {
-    layers: 'mpad_Geoserver:augCheckedCoord',
-    format: 'image/png',
-    transparent: true,
-    attribution: 'MPA Support Network',
-    cql_filter: cqlFilter
-  } as L.WMSOptions);
-
-  if (wmsLayerVisible) {
-    wmsLayer.addTo(map!);
+  if (wmsLayer) {
+    const wmsParams = (wmsLayer as L.TileLayer.WMS & { wmsParams: Record<string, unknown> }).wmsParams;
+    if (cqlFilter) {
+      wmsLayer.setParams({ cql_filter: cqlFilter } as L.WMSParams);
+    } else {
+      delete wmsParams.cql_filter;
+      wmsLayer.setParams({ cql_filter: '' } as L.WMSParams);
+    }
   }
 }
 
@@ -307,15 +361,8 @@ async function loadDetailedMapData() {
   isDetailedDataLoading.value = true;
   try {
     const data = await getDetailedMapData();
-    data.forEach((pt: any) => {
-      if (pt.latitude && pt.longitude) {
-        const marker = L.circleMarker([parseFloat(pt.latitude), parseFloat(pt.longitude)], { radius: 5, fillColor: '#FF0000', color: '#000' });
-        marker.bindTooltip(pt.complete_name || 'MPA');
-        marker.bindPopup(`<strong>${pt.complete_name || 'MPA'}</strong>`);
-        marker.on('click', () => callDrawerMap(pt));
-        marker.addTo(detailedDataLayer!);
-      }
-    });
+    detailedData = Array.isArray(data) ? data : [];
+    renderDetailedMarkers();
     detailedDataLoaded.value = true;
   } catch (err) {
     console.error('loadDetailedMapData error', err);

@@ -40,7 +40,7 @@
 
     <template #tab-history>
       <div class="ordinance-history">
-        <div class="ordinance-header">
+        <div v-if="isAdmin" class="ordinance-header">
           <button
             type="button"
             class="add-ordinance-button"
@@ -85,7 +85,7 @@
 
     <template #tab-monitoring>
       <div class="meat-scores">
-        <div class="meat-scores-header">
+        <div v-if="isAdmin" class="meat-scores-header">
           <button
             type="button"
             class="add-meat-score-button"
@@ -294,6 +294,9 @@ const { list: usersList } = storeToRefs(usersStore);
 // Detect if this is a pending MPA based on route
 const isPending = computed(() => route.meta.pending === true || route.name === 'mpas-pending-details');
 
+// Check if a user is logged in and is an administrator (user_type === 1)
+const isAdmin = computed(() => !!authStore.user && authStore.user.user_type === 1);
+
 // Check if user can edit (not pending and not a Viewer)
 const canEdit = computed(() => !isPending.value && authStore.user?.user_type !== 3);
 
@@ -449,23 +452,36 @@ const handlePendingReject = () => {
   rejectModalOpen.value = true;
 };
 
-const pendingActionItems = computed<DropdownItem[]>(() => [
-  {
-    icon: 'pen-to-square',
-    title: 'Edit',
-    handler: handlePendingEdit
-  },
-  {
-    icon: 'check',
-    title: 'Approve',
-    handler: handlePendingApprove
-  },
-  {
-    icon: 'x',
-    title: 'Reject',
-    handler: handlePendingReject
+const isRejected = computed(() => {
+  const data = currentData.value as Record<string, unknown> | null;
+  const status = String(data?.upload_status ?? data?.status ?? '').toLowerCase();
+  return status === 'rejected';
+});
+
+const pendingActionItems = computed<DropdownItem[]>(() => {
+  const items: DropdownItem[] = [
+    {
+      icon: 'pen-to-square',
+      title: 'Edit',
+      handler: handlePendingEdit
+    },
+    {
+      icon: 'check',
+      title: 'Approve',
+      handler: handlePendingApprove
+    }
+  ];
+
+  if (!isRejected.value) {
+    items.push({
+      icon: 'x',
+      title: 'Reject',
+      handler: handlePendingReject
+    });
   }
-]);
+
+  return items;
+});
 
 const confirmApprove = async () => {
   if (!approvingStagingId.value) return;

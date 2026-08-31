@@ -22,9 +22,7 @@
           <label>Ecosystem</label>
           <select v-model="form.ecosystem">
             <option value="All">All</option>
-            <option value="1">Corals</option>
-            <option value="2">Mangroves</option>
-            <option value="3">Seagrass</option>
+            <option v-for="opt in ECOSYSTEM_OPTIONS" :key="opt.value" :value="String(opt.value)">{{ opt.label }}</option>
           </select>
         </div>
         <div class="filter-group">
@@ -46,26 +44,37 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { ECOSYSTEM_OPTIONS } from '@/constants/ecosystem';
+
+type FilterState = {
+  mpa: boolean;
+  nipas: string;
+  ecosystem: string;
+  mpaMinYear: number | null;
+  mpaMaxYear: number | null;
+};
+
+const props = defineProps<{ initialFilters?: FilterState }>();
 const emit = defineEmits(['close', 'apply']);
-const form = ref({
+
+const defaultForm = (): FilterState => ({
   mpa: true,
   nipas: '',
   ecosystem: 'All',
-  mpaMinYear: null as number | null,
-  mpaMaxYear: null as number | null
+  mpaMinYear: null,
+  mpaMaxYear: null
 });
+
+const form = ref<FilterState>(props.initialFilters ? { ...props.initialFilters } : defaultForm());
+
 function apply() {
   emit('apply', form.value);
   emit('close');
 }
 function reset() {
-  form.value = {
-    mpa: true,
-    nipas: '',
-    ecosystem: 'All',
-    mpaMinYear: null,
-    mpaMaxYear: null
-  };
+  form.value = defaultForm();
+  emit('apply', form.value);
+  emit('close');
 }
 </script>
 
@@ -82,4 +91,3 @@ header button { padding: 4px 8px; background: #e0e0e0; border: none; border-radi
 .button-group button { flex: 1; padding: 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
 .button-group button:hover { background: #0056b3; }
 </style>
-

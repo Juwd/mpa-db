@@ -525,6 +525,9 @@ const handleSort = (event: { sortField?: string; sortOrder?: number }) => {
 };
 
 const handleFilterChange = (filters: Record<string, unknown>) => {
+  // Persist filters so they survive navigating to details and back
+  mpaStore.listFilters = { ...filters };
+
   // Skip complex filter logic for pending MPAs and My MPAs (they don't support server-side filtering yet)
   if (showPendingMPAs.value || showMyMPAs.value) {
     // For pending/my MPAs, just handle simple search
@@ -699,8 +702,15 @@ const fetchData = async () => {
   loading.value = true;
   try {
     if (showMyMPAs.value) {
-      // Fetch user's own MPAs - returns {success, staging, approved}
-      const resp = await fetchMyMPAs();
+      // Fetch user's own MPAs with filters
+      const params: any = {};
+      if (searchQuery.value.trim()) {
+        params.q = searchQuery.value.trim();
+      }
+      if (filterQuery.value) {
+        params.filter = filterQuery.value;
+      }
+      const resp = await fetchMyMPAs(params);
       console.log('My MPAs Response:', resp);
 
       // Combine staging and approved MPAs
@@ -717,16 +727,8 @@ const fetchData = async () => {
       // Combine both arrays
       const allMyMPAs = [...stagingMPAs, ...approvedMPAs];
 
-      // Apply client-side search if needed
-      let filteredMPAs = allMyMPAs;
-      if (searchQuery.value.trim()) {
-        const query = searchQuery.value.trim().toLowerCase();
-        filteredMPAs = allMyMPAs.filter((mpa: any) =>
-          mpa.complete_name?.toLowerCase().includes(query)
-        );
-      }
-
       // Apply client-side sorting if needed
+      const filteredMPAs = allMyMPAs;
       if (sortField.value) {
         filteredMPAs.sort((a: any, b: any) => {
           const aVal = a[sortField.value!];
@@ -751,8 +753,15 @@ const fetchData = async () => {
       mpas.value = filteredMPAs.slice(startIndex, endIndex);
       totalRecords.value = filteredMPAs.length;
     } else if (showPendingMPAs.value) {
-      // Fetch pending MPAs from store (which calls /upload/queue)
-      await mpaStore.loadPendingMPAs();
+      // Fetch pending MPAs with filters
+      const params: any = {};
+      if (searchQuery.value.trim()) {
+        params.q = searchQuery.value.trim();
+      }
+      if (filterQuery.value) {
+        params.filter = filterQuery.value;
+      }
+      await mpaStore.loadPendingMPAs(params);
       // Transform nested data to flat structure for table
       mpas.value = (pendingMPAs.value || []).map(transformPendingMPA);
       totalRecords.value = mpas.value.length;
@@ -790,7 +799,14 @@ const fetchData = async () => {
 
 const fetchAllMPAsForExport = async (): Promise<Record<string, unknown>[]> => {
   if (showMyMPAs.value) {
-    const resp = await fetchMyMPAs();
+    const params: any = {};
+    if (searchQuery.value.trim()) {
+      params.q = searchQuery.value.trim();
+    }
+    if (filterQuery.value) {
+      params.filter = filterQuery.value;
+    }
+    const resp = await fetchMyMPAs(params);
     const stagingMPAs = (resp.data?.staging || []).map((item: any) => ({
       ...transformPendingMPA(item),
       _uploadStatus: item.upload_status || 'pending'
@@ -799,12 +815,7 @@ const fetchAllMPAsForExport = async (): Promise<Record<string, unknown>[]> => {
       ...item,
       _uploadStatus: 'approved'
     }));
-    let allMyMPAs = [...stagingMPAs, ...approvedMPAs];
-
-    if (searchQuery.value.trim()) {
-      const query = searchQuery.value.trim().toLowerCase();
-      allMyMPAs = allMyMPAs.filter((mpa: any) => mpa.complete_name?.toLowerCase().includes(query));
-    }
+    const allMyMPAs = [...stagingMPAs, ...approvedMPAs];
 
     if (sortField.value) {
       allMyMPAs.sort((a: any, b: any) => {
@@ -822,7 +833,14 @@ const fetchAllMPAsForExport = async (): Promise<Record<string, unknown>[]> => {
   }
 
   if (showPendingMPAs.value) {
-    await mpaStore.loadPendingMPAs();
+    const params: any = {};
+    if (searchQuery.value.trim()) {
+      params.q = searchQuery.value.trim();
+    }
+    if (filterQuery.value) {
+      params.filter = filterQuery.value;
+    }
+    await mpaStore.loadPendingMPAs(params);
     return ((pendingMPAs.value || []).map(transformPendingMPA)) as Record<string, unknown>[];
   }
 
@@ -842,19 +860,8 @@ const fetchAllMPAsForExport = async (): Promise<Record<string, unknown>[]> => {
 // Watch showPendingMPAs and showMyMPAs for changes and refresh data
 watch([showPendingMPAs, showMyMPAs], async (newValues, oldValues) => {
   if (newValues[0] !== oldValues[0] || newValues[1] !== oldValues[1]) {
-    // Reset pagination, filters, and sorting when switching views
+    // Reset pagination to 1 when switching views, but keep filters intact
     currentPage.value = 1;
-    searchQuery.value = '';
-    filterQuery.value = '';
-    sortField.value = null;
-    sortOrder.value = 'asc';
-    selectedProvinces.value = [];
-
-    // Clear filter values in data table
-    if (dataTableRef.value?.filterValues) {
-      dataTableRef.value.filterValues = {};
-    }
-
     await fetchData();
   }
 });
@@ -1062,7 +1069,15 @@ const pendingRowContextMenu = (row: any) => {
 
 onMounted(async () => {
   await optionsStore.fetchOptions();
-  await fetchData();
+  // Restore filters persisted from a previous visit; restoring triggers
+  // a 'filter-change' emit which re-applies them and fetches data
+  const saved = mpaStore.listFilters;
+  const restored = saved && Object.keys(saved).length > 0
+    ? dataTableRef.value?.restoreFilters(saved)
+    : false;
+  if (!restored) {
+    await fetchData();
+  }
 });
 </script>
 

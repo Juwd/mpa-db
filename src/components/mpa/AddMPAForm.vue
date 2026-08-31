@@ -150,6 +150,7 @@ import { useProvinceOptions, useMunicipalityOptions, useBarangayOptions } from '
 import { useAuthStore } from '@/stores/auth';
 import { useUsersStore } from '@/stores/users';
 import { uploadShapefile } from '@/api/mpa';
+import { ECOSYSTEM_OPTIONS } from '@/constants/ecosystem';
 
 const emit = defineEmits<{
   submit: [data: Record<string, unknown>];
@@ -178,18 +179,7 @@ const formTabs = [
 ];
 
 // Type options for MPA (Ecosystem types)
-const typeOptions = [
-  { value: 1, label: 'Corals' },
-  { value: 2, label: 'Mangrove' },
-  { value: 3, label: 'Seagrass' },
-  { value: 4, label: 'Sandy Bottom' },
-  { value: 5, label: 'Deep Water' },
-  { value: 6, label: 'Island' },
-  { value: 7, label: 'Islet' },
-  { value: 8, label: 'Wetland' },
-  { value: 9, label: 'Beach Forest' },
-  { value: 10, label: 'Seaweeds' }
-];
+const typeOptions = ECOSYSTEM_OPTIONS;
 
 type FormFieldDef = {
   key: string;

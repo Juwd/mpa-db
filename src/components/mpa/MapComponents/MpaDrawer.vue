@@ -18,7 +18,7 @@
         </div>
         <div class="detail-row">
           <span class="label">Zone:</span>
-          <span class="value">{{ store.mpa.properties.zone_id }}</span>
+          <span class="value">{{ zones[store.mpa.properties.zone_id] }}</span>
         </div>
       </div>
 
@@ -93,6 +93,60 @@
 <script setup lang="ts">
 import { useDrawerStore } from '@/stores/drawer';
 const store = useDrawerStore();
+
+const zones: Record<string, string> = {
+  '1': 'Core',
+  '2': 'Buffer',
+  '3': 'Limited Use Zone',
+  '4': 'Capture Fishery Area',
+  '5': 'Mangrove Limited Use Zone',
+  '6': 'Core 1',
+  '7': 'Core 2',
+  '8': 'Communal',
+  '11': 'MPA 1 Buffer',
+  '12': 'MPA 2 Core',
+  '13': 'MPA 3 Core',
+  '14': 'MPA1 Core',
+  '15': 'Mangrove Conservation Area',
+  '16': 'Mariculture Area',
+  '17': 'Multiple Use Zone',
+  '18': 'Sustainable Use Zone',
+  '19': 'Sustainable Use Zone 1',
+  '20': 'Sustainable Use Zone 2',
+  '21': 'Total',
+  '22': 'Tourism Zone',
+  '23': 'Turtle Watching Area',
+  '24': 'Women Managed Area',
+  '25': 'Women Managed Area 1',
+  '26': 'Women Managed Area 2',
+  '27': 'Eco-Tourism',
+  '28': 'Core 3',
+  '29': 'Buffer 1',
+  '30': 'Buffer 2',
+  '31': 'Buffer 3',
+  '32': 'Sub-zone',
+  '33': 'Eco-Tourism 1',
+  '34': 'Eco-Tourism 2',
+  '35': 'Core 4',
+  '36': 'Core 5',
+  '37': 'Passage',
+  '38': 'Special Use',
+  '39': 'restricted',
+  '40': 'Restricted Fishery Area',
+  '41': 'TURF',
+  '42': 'Regulated Use',
+  '43': 'RUZ',
+  '44': 'ESW',
+  '45': 'ESW 1',
+  '46': 'ESW 2',
+  '47': 'ESW 3',
+  '48': 'ESW 4',
+  '49': 'ESW 5',
+  '50': 'MCA 1',
+  '51': 'MCA 2',
+  '52': 'Navigation Lanes',
+  '53': 'Seagrass Conservation Area',
+};
 
 const formatNumber = (num: number) => {
   return new Intl.NumberFormat('en-US').format(num);

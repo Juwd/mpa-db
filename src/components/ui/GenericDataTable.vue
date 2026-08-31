@@ -665,8 +665,28 @@ const getColumnWidth = (col: ColumnDef): number => {
   return col.colWidth || 200; // Default to 200px if not specified
 };
 
+/**
+ * Restore previously saved filters: re-activates the filter rows and applies values.
+ * Setting filterValues triggers the deep watcher, which emits 'filter-change'.
+ */
+const restoreFilters = (values: Record<string, unknown>) => {
+  const entries = Object.entries(values).filter(([field]) =>
+    props.columns.some((col) => col.field === field && !!col.filter)
+  );
+  if (entries.length === 0) return false;
+
+  entries.forEach(([field]) => {
+    const col = props.columns.find((c) => c.field === field);
+    if (col) addFilter(col);
+  });
+  filterValues.value = Object.fromEntries(entries);
+  filtersOpen.value = true;
+  return true;
+};
+
 defineExpose({
-  filterValues
+  filterValues,
+  restoreFilters
 });
 </script>
 
